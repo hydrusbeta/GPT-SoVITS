@@ -162,7 +162,7 @@
     "语音降噪进程输出信息": "Voice Denoiser Process Output Information",
     "请上传3~10秒内参考音频，超过会报错！": "Please upload a reference audio within the 3-10 second range; if it exceeds this duration, it will raise errors.",
     "请上传参考音频": "Please Upload the Reference Audio",
-    "请填入推理文本": "Please Fill in the Terget Text",
+    "请填入推理文本": "Please Fill in the Target Text",
     "请填入正确的List路径": "Please Fill in the Correct List Path",
     "请填入正确的音频文件夹路径": "Please Fill in the Correct Audio Folder Path",
     "请输入有效文本": "Please enter valid text.",
@@ -188,5 +188,9 @@
     "预训练的SSL模型路径": "Pretrained SSL model path",
     "预训练的SoVITS-D模型路径": "Pretrained SoVITS-D model path",
     "预训练的SoVITS-G模型路径": "Pretrained SoVITS-G model path",
-    "预训练的中文BERT模型路径": " Pretrained BERT model path"
+    "预训练的中文BERT模型路径": " Pretrained BERT model path",
+    "请上传参考音频或提供预先计算的频谱图": "Please upload reference audio or provide a precomputed spectrogram",
+    "您必须执行以下操作之一：1. 提供预先计算的音素和参考语言，2. 提供参考文本和参考语言，或者 3. 将引用自由设置为 True": "You must do one of the following: 1. supply both precomputed phonemes and the reference language, 2. supply both a reference text and reference language, or 3. set reference-free to True",
+    "由于您提供了预计算的音素并选择了需要 bert 数组的语言，因此您还必须提供预计算的 bert 数组": "Since you supplied precomputed phonemes and selected a language that requires a bert array, you must also supply a precomputed bert array",
+    "请提供目标语言": "Please supply the target language"
 }

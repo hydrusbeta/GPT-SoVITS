@@ -284,11 +284,11 @@ class GPTSoVITSGUI(QMainWindow):
             change_sovits_weights(sovits_path=SoVITS_model_path)
             self.SoVITS_Path = SoVITS_model_path
 
-        synthesis_result = get_tts_wav(ref_wav_path=ref_audio_path, 
-                                       prompt_text=ref_text, 
-                                       prompt_language=language_combobox, 
-                                       text=target_text, 
-                                       text_language=target_language_combobox)
+        synthesis_result = get_tts_wav(ref_wav_path=ref_audio_path,
+                                       ref_text=ref_text,
+                                       ref_language=language_combobox,
+                                       prompt_text=target_text,
+                                       prompt_language=target_language_combobox)
 
         result_list = list(synthesis_result)
 

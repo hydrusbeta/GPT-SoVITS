@@ -394,92 +394,183 @@ def merge_short_text_in_array(texts, threshold):
             result[len(result) - 1] += text
     return result
 
-##ref_wav_path+prompt_text+prompt_language+text(单个)+text_language+top_k+top_p+temperature
-# cache_tokens={}#暂未实现清理机制
-cache= {}
-def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language, how_to_cut=i18n("不切"), top_k=20, top_p=0.6, temperature=0.6, ref_free 
-    =False,speed=1,if_freeze=False,inp_refs=None):
-    global cache
-    if ref_wav_path:pass
-    else:gr.Warning(i18n('请上传参考音频'))
-    if text:pass
-    else:gr.Warning(i18n('请填入推理文本'))
-    t = []
-    if prompt_text is None or len(prompt_text) == 0:
+
+def validate_inputs(ref_wav_path, ref_text, ref_language, text, text_language, ref_free, precomputed_phones1, precomputed_refers):
+    is_valid = True
+
+    # Inputs Validation 1: User must either supply a precomputed spectrogram or a reference audio file.
+    if not ref_wav_path and not precomputed_refers:
+        msg = i18n('请上传参考音频或提供预先计算的频谱图')
+        print(msg)
+        gr.Warning(msg)
+        is_valid = False
+
+    # Inputs validation 2: User must either:
+    #   1. supply precomputed phoneme token indices and the prompt language
+    #   2. supply a reference text and the prompt language
+    #   3. set ref_free to True
+    if not (precomputed_phones1 and ref_language) and not (ref_text and ref_language) and not ref_free:
+        msg = i18n("您必须执行以下操作之一：1. 提供预先计算的音素和参考语言，2. 提供参考文本和参考语言，或者 3. 将引用自由设置为 True")
+        print(msg)
+        gr.Warning(msg)
+        is_valid = False
+
+    # Inputs validation 3: If the user supplies precomputed phoneme token indices and the reference language requires a
+    # bert array, then they must also supply that.
+    if precomputed_phones1 and ref_language in LANGUAGES_REQUIRING_BERT:
+        msg = i18n("由于您提供了预计算的音素并选择了需要 bert 数组的语言，因此您还必须提供预计算的 bert 数组")
+        print(msg)
+        gr.Warning(msg)
+        is_valid = False
+
+    # Inputs Validation 4: The user must supply a target text and target language.
+    if not text:
+        msg = i18n('请填入推理文本')
+        print(msg)
+        gr.Warning(msg)
+        is_valid = False
+    if not text_language:
+        msg = i18n("请提供目标语言")
+        print(msg)
+        gr.Warning(msg)
+        is_valid = False
+
+    return is_valid
+
+
+def compute_prompt(ref_wav_path, zero_wav):
+    with torch.no_grad():
+        wav16k, sr = librosa.load(ref_wav_path, sr=16000)
+        if wav16k.shape[0] > 160000 or wav16k.shape[0] < 48000:
+            gr.Warning(i18n("参考音频在3~10秒范围外，请更换！"))
+            raise OSError(i18n("参考音频在3~10秒范围外，请更换！"))
+        wav16k = torch.from_numpy(wav16k)
+        zero_wav_torch = torch.from_numpy(zero_wav)
+        if is_half:
+            wav16k = wav16k.half().to(device)
+            zero_wav_torch = zero_wav_torch.half().to(device)
+        else:
+            wav16k = wav16k.to(device)
+            zero_wav_torch = zero_wav_torch.to(device)
+        wav16k = torch.cat([wav16k, zero_wav_torch])
+        ssl_content = ssl_model.model(wav16k.unsqueeze(0))[
+            "last_hidden_state"
+        ].transpose(
+            1, 2
+        )  # .float()
+        codes = vq_model.extract_latent(ssl_content)
+        prompt_semantic = codes[0, 0]
+        prompt = prompt_semantic.unsqueeze(0).to(device)
+    return prompt
+
+
+def preprocess_reference_text(ref_text, ref_language, ref_free, precomputed_phones1, precomputed_bert1):
+    ref_language = dict_language[ref_language]
+    phones1, bert1 = None, None
+    if precomputed_phones1:
+        phones1 = precomputed_phones1
+    if precomputed_bert1:
+        bert1 = precomputed_bert1
+    if precomputed_phones1 and not precomputed_bert1 and ref_language not in LANGUAGES_REQUIRING_BERT:
+        bert1 = torch.zeros(
+            (1024, len(precomputed_phones1)),
+            dtype=torch.float16 if is_half == True else torch.float32,
+        ).to(device).to(dtype)
+    if ref_free:
+        phones1, bert1 = None, None  # Explicitly passing ref_free=True takes precedence even if the user supplied precomputed values.
+    if not precomputed_phones1 and (ref_text is None or len(ref_text) == 0):
         ref_free = True
-    t0 = ttime()
+    if not precomputed_phones1 and not ref_free:
+        ref_text = ref_text.strip("\n")
+        if (ref_text[-1] not in splits): ref_text += "。" if ref_language != "en" else "."
+        print(i18n("实际输入的参考文本:"), ref_text)
+        phones1, bert1, _ = get_phones_and_bert(ref_text, ref_language, version)
+    return phones1, bert1, ref_free
+
+
+def preprocess_reference_audios(ref_wav_path, ref_free, inp_refs, precomputed_prompt, precomputed_refers):
+    if ref_free:
+        prompt = None
+    elif precomputed_prompt:
+        prompt = precomputed_prompt
+    else:
+        prompt = compute_prompt(ref_wav_path, ZERO_WAV)
+    if precomputed_refers:
+        refers = precomputed_refers
+    else:
+        refers = [get_spepc(hps, ref_wav_path).to(dtype).to(device)]
+    if(inp_refs):
+        for path in inp_refs:
+            try:
+                refer = get_spepc(hps, path.name).to(dtype).to(device)
+                refers.append(refer)
+            except:
+                traceback.print_exc()
+    return prompt, refers
+
+
+def preprocess_and_slice_prompt(prompt_text, prompt_language, how_to_cut):
     prompt_language = dict_language[prompt_language]
-    text_language = dict_language[text_language]
+    prompt_text = prompt_text.strip("\n")
+    print(i18n("实际输入的目标文本:"), prompt_text)
+    if (how_to_cut == i18n("凑四句一切")):
+        prompt_text = cut1(prompt_text)
+    elif (how_to_cut == i18n("凑50字一切")):
+        prompt_text = cut2(prompt_text)
+    elif (how_to_cut == i18n("按中文句号。切")):
+        prompt_text = cut3(prompt_text)
+    elif (how_to_cut == i18n("按英文句号.切")):
+        prompt_text = cut4(prompt_text)
+    elif (how_to_cut == i18n("按标点符号切")):
+        prompt_text = cut5(prompt_text)
+    while "\n\n" in prompt_text:
+        prompt_text = prompt_text.replace("\n\n", "\n")
+    print(i18n("实际输入的目标文本(切句后):"), prompt_text)
+    prompt_texts = prompt_text.split("\n")
+    prompt_texts = process_text(prompt_texts)
+    prompt_texts = merge_short_text_in_array(prompt_texts, 5)
+    return prompt_texts, prompt_language
 
 
-    if not ref_free:
-        prompt_text = prompt_text.strip("\n")
-        if (prompt_text[-1] not in splits): prompt_text += "。" if prompt_language != "en" else "."
-        print(i18n("实际输入的参考文本:"), prompt_text)
-    text = text.strip("\n")
-    # if (text[0] not in splits and len(get_first(text)) < 4): text = "。" + text if text_language != "en" else "." + text
-    
-    print(i18n("实际输入的目标文本:"), text)
-    zero_wav = np.zeros(
-        int(hps.data.sampling_rate * 0.3),
-        dtype=np.float16 if is_half == True else np.float32,
-    )
-    if not ref_free:
-        with torch.no_grad():
-            wav16k, sr = librosa.load(ref_wav_path, sr=16000)
-            if (wav16k.shape[0] > 160000 or wav16k.shape[0] < 48000):
-                gr.Warning(i18n("参考音频在3~10秒范围外，请更换！"))
-                raise OSError(i18n("参考音频在3~10秒范围外，请更换！"))
-            wav16k = torch.from_numpy(wav16k)
-            zero_wav_torch = torch.from_numpy(zero_wav)
-            if is_half == True:
-                wav16k = wav16k.half().to(device)
-                zero_wav_torch = zero_wav_torch.half().to(device)
-            else:
-                wav16k = wav16k.to(device)
-                zero_wav_torch = zero_wav_torch.to(device)
-            wav16k = torch.cat([wav16k, zero_wav_torch])
-            ssl_content = ssl_model.model(wav16k.unsqueeze(0))[
-                "last_hidden_state"
-            ].transpose(
-                1, 2
-            )  # .float()
-            codes = vq_model.extract_latent(ssl_content)
-            prompt_semantic = codes[0, 0]
-            prompt = prompt_semantic.unsqueeze(0).to(device)
+cache = {}
+LANGUAGES_REQUIRING_BERT = {"zh", "ja", "ko", "yue", "auto", "auto_yue"}
+ZERO_WAV = np.zeros(
+    int(hps.data.sampling_rate * 0.3),
+    dtype=np.float16 if is_half else np.float32,
+)
+
+def get_tts_wav(ref_wav_path, ref_text, ref_language, prompt_text, prompt_language, how_to_cut=i18n("不切"),
+                top_k=20, top_p=0.6, temperature=0.6, ref_free=False, speed=1, if_freeze=False, inp_refs=None,
+                precomputed_prompt=None, precomputed_phones1=None, precomputed_bert1=None, precomputed_refers=None):
+    global cache
+
+    valid = validate_inputs(ref_wav_path, ref_text, ref_language, prompt_text, prompt_language, ref_free,
+                            precomputed_phones1, precomputed_refers)
+    if not valid:
+        return
+
+    t = []
+    t0 = ttime()
+
+    phones1, bert1, ref_free = preprocess_reference_text(ref_text, ref_language, ref_free, precomputed_phones1, precomputed_bert1)
+    prompt, refers = preprocess_reference_audios(ref_wav_path, ref_free, inp_refs, precomputed_prompt, precomputed_refers)
+    prompt_texts, prompt_language = preprocess_and_slice_prompt(prompt_text, prompt_language, how_to_cut)
 
     t1 = ttime()
     t.append(t1-t0)
 
-    if (how_to_cut == i18n("凑四句一切")):
-        text = cut1(text)
-    elif (how_to_cut == i18n("凑50字一切")):
-        text = cut2(text)
-    elif (how_to_cut == i18n("按中文句号。切")):
-        text = cut3(text)
-    elif (how_to_cut == i18n("按英文句号.切")):
-        text = cut4(text)
-    elif (how_to_cut == i18n("按标点符号切")):
-        text = cut5(text)
-    while "\n\n" in text:
-        text = text.replace("\n\n", "\n")
-    print(i18n("实际输入的目标文本(切句后):"), text)
-    texts = text.split("\n")
-    texts = process_text(texts)
-    texts = merge_short_text_in_array(texts, 5)
-    audio_opt = []
-    if not ref_free:
-        phones1,bert1,norm_text1=get_phones_and_bert(prompt_text, prompt_language, version)
-
-    for i_text,text in enumerate(texts):
+    # Loop through the prompt text slices and generate audio
+    audio_out = []
+    for i_text, prompt_text_segment in enumerate(prompt_texts):
         # 解决输入目标文本的空行导致报错的问题
-        if (len(text.strip()) == 0):
+        if len(prompt_text_segment.strip()) == 0:
             continue
-        if (text[-1] not in splits): text += "。" if text_language != "en" else "."
-        print(i18n("实际输入的目标文本(每句):"), text)
-        phones2,bert2,norm_text2=get_phones_and_bert(text, text_language, version)
+        if prompt_text_segment[-1] not in splits:
+            prompt_text_segment += "。" if prompt_language != "en" else "."  # remark: This would not work well for the cut-every-50-characters cutting strategy.
+        print(i18n("实际输入的目标文本(每句):"), prompt_text_segment)
+        phones2, bert2, norm_text2 = get_phones_and_bert(prompt_text_segment, prompt_language, version)
         print(i18n("前端处理后的文本(每句):"), norm_text2)
-        if not ref_free:
+        if phones1:  # Note: If we have phones1, then it is guaranteed that we also have bert1.
             bert = torch.cat([bert1, bert2], 1)
             all_phoneme_ids = torch.LongTensor(phones1+phones2).to(device).unsqueeze(0)
         else:
@@ -490,46 +581,40 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language, text, text_language,
         all_phoneme_len = torch.tensor([all_phoneme_ids.shape[-1]]).to(device)
 
         t2 = ttime()
-        # cache_key="%s-%s-%s-%s-%s-%s-%s-%s"%(ref_wav_path,prompt_text,prompt_language,text,text_language,top_k,top_p,temperature)
+        # cache_key="%s-%s-%s-%s-%s-%s-%s-%s"%(ref_wav_path,prompt_text_segment,prompt_language,text,text_language,top_k,top_p,temperature)
         # print(cache.keys(),if_freeze)
-        if(i_text in cache and if_freeze==True):pred_semantic=cache[i_text]
+        if i_text in cache and if_freeze:
+            pred_semantic = cache[i_text]
         else:
             with torch.no_grad():
                 pred_semantic, idx = t2s_model.model.infer_panel(
-                    all_phoneme_ids,
-                    all_phoneme_len,
-                    None if ref_free else prompt,
-                    bert,
-                    # prompt_phone_len=ph_offset,
+                    x=all_phoneme_ids,
+                    x_lens=all_phoneme_len,
+                    prompts=prompt,
+                    bert_feature=bert,
                     top_k=top_k,
                     top_p=top_p,
-                    temperature=temperature,
                     early_stop_num=hz * max_sec,
+                    temperature=temperature,
                 )
                 pred_semantic = pred_semantic[:, -idx:].unsqueeze(0)
-                cache[i_text]=pred_semantic
+                cache[i_text] = pred_semantic
         t3 = ttime()
-        refers=[]
-        if(inp_refs):
-            for path in inp_refs:
-                try:
-                    refer = get_spepc(hps, path.name).to(dtype).to(device)
-                    refers.append(refer)
-                except:
-                    traceback.print_exc()
-        if(len(refers)==0):refers = [get_spepc(hps, ref_wav_path).to(dtype).to(device)]
-        audio = (vq_model.decode(pred_semantic, torch.LongTensor(phones2).to(device).unsqueeze(0), refers,speed=speed).detach().cpu().numpy()[0, 0])
-        max_audio=np.abs(audio).max()#简单防止16bit爆音
-        if max_audio>1:audio/=max_audio
-        audio_opt.append(audio)
-        audio_opt.append(zero_wav)
+
+        audio = (vq_model.decode(pred_semantic, torch.LongTensor(phones2).to(device).unsqueeze(0), refers, speed=speed).detach().cpu().numpy()[0, 0])
+        max_audio = np.abs(audio).max()  # 简单防止16bit爆音
+        if max_audio > 1:
+            audio /= max_audio
+        audio_out.append(audio)
+        audio_out.append(ZERO_WAV)
+
         t4 = ttime()
         t.extend([t2 - t1,t3 - t2, t4 - t3])
         t1 = ttime()
-    print("%.3f\t%.3f\t%.3f\t%.3f" % 
+    print("%.3f\t%.3f\t%.3f\t%.3f" %
            (t[0], sum(t[1::3]), sum(t[2::3]), sum(t[3::3]))
            )
-    yield hps.data.sampling_rate, (np.concatenate(audio_opt, 0) * 32768).astype(
+    yield hps.data.sampling_rate, (np.concatenate(audio_out, 0) * 32768).astype(
         np.int16
     )
 

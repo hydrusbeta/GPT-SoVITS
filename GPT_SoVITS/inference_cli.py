@@ -42,11 +42,11 @@ def synthesize(GPT_model_path, SoVITS_model_path, ref_audio_path, ref_text_path,
     change_sovits_weights(sovits_path=SoVITS_model_path)
 
     # Synthesize audio
-    synthesis_result = get_tts_wav(ref_wav_path=ref_audio_path, 
-                                   prompt_text=ref_text, 
-                                   prompt_language=i18n(ref_language), 
-                                   text=target_text, 
-                                   text_language=i18n(target_language),
+    synthesis_result = get_tts_wav(ref_wav_path=ref_audio_path,
+                                   ref_text=ref_text,
+                                   ref_language=i18n(ref_language),
+                                   prompt_text=target_text,
+                                   prompt_language=i18n(target_language),
                                    how_to_cut=how_to_cut,
                                    top_k=top_k,
                                    top_p=top_p,

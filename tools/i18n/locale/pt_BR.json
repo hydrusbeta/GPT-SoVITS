@@ -188,5 +188,9 @@
     "预训练的SSL模型路径": "Caminho do modelo SSL pre-train",
     "预训练的SoVITS-D模型路径": "Caminho do modelo SoVITS-D pre-train",
     "预训练的SoVITS-G模型路径": "Caminho do modelo SoVITS-G pre-train",
-    "预训练的中文BERT模型路径": "Caminho do modelo BERT chinês pre-train"
+    "预训练的中文BERT模型路径": "Caminho do modelo BERT chinês pre-train",
+    "请上传参考音频或提供预先计算的频谱图": "Faça upload do áudio de referência ou forneça um espectrograma pré-computado",
+    "您必须执行以下操作之一：1. 提供预先计算的音素和参考语言，2. 提供参考文本和参考语言，或者 3. 将引用自由设置为 True": "Você deve seguir um destes procedimentos: 1. fornecer os fonemas pré-computados e o idioma de referência, 2. fornecer um texto de referência e um idioma de referência ou 3. definir reference-free como True",
+    "由于您提供了预计算的音素并选择了需要 bert 数组的语言，因此您还必须提供预计算的 bert 数组": "Como você forneceu fonemas pré-computados e selecionou um idioma que requer uma matriz bert, você também deve fornecer uma matriz bert pré-computada",
+    "请提供目标语言": "Forneça o idioma de destino"
 }
