@@ -18,8 +18,10 @@ logging.getLogger("charset_normalizer").setLevel(logging.ERROR)
 logging.getLogger("torchaudio._extension").setLevel(logging.ERROR)
 logging.getLogger("multipart.multipart").setLevel(logging.ERROR)
 import LangSegment, os, re, sys, json
-import pdb
 import torch
+
+# Invoke this web UI from the project root (GPT-SoVITS) as follows:
+# python -m GPT_SoVITS.inference_webui [language]
 
 try:
     import gradio.analytics as analytics
@@ -37,8 +39,10 @@ for i in range(2):
     if os.path.exists(pretrained_sovits_name[i]):
         _[-1].append(pretrained_sovits_name[i])
 pretrained_gpt_name,pretrained_sovits_name = _
-    
-        
+print(os.getcwd())
+print(pretrained_gpt_name)
+print(pretrained_sovits_name)
+
 
 if os.path.exists(f"./weight.json"):
     pass
@@ -79,18 +83,18 @@ import gradio as gr
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 import numpy as np
 import librosa
-from feature_extractor import cnhubert
+from .feature_extractor import cnhubert
 
 cnhubert.cnhubert_base_path = cnhubert_base_path
 
-from module.models import SynthesizerTrn
-from AR.models.t2s_lightning_module import Text2SemanticLightningModule
-from text import cleaned_text_to_sequence
-from text.cleaner import clean_text
+from .module.models import SynthesizerTrn
+from .AR.models.t2s_lightning_module import Text2SemanticLightningModule
+from .text import cleaned_text_to_sequence
+from .text.cleaner import clean_text
 from time import time as ttime
-from module.mel_processing import spectrogram_torch
-from tools.my_utils import load_audio
-from tools.i18n.i18n import I18nAuto, scan_language_list
+from .module.mel_processing import spectrogram_torch
+from .tools.my_utils import load_audio
+from .tools.i18n.i18n import I18nAuto, scan_language_list
 
 language=os.environ.get("language","Auto")
 language=sys.argv[-1] if sys.argv[-1] in scan_language_list() else language
@@ -231,7 +235,11 @@ def change_sovits_weights(sovits_path,prompt_language=None,text_language=None):
         return  {'__type__':'update', 'choices':list(dict_language.keys())}, {'__type__':'update', 'choices':list(dict_language.keys())}, prompt_text_update, prompt_language_update, text_update, text_language_update
 
 
-
+# The GPT-SoVITS project was originally structured in a hacky (imao) way where modifications to sys.path were abundant.
+# Unfortunately, this means that the pretrained SoVITS (.pth) files contain serialized classes that depend on that
+# structure. The following modification to the system path is required in order to load existing .pth files.
+now_dir = os.path.join(os.getcwd(), 'GPT_SoVITS')
+sys.path.insert(0, now_dir)
 change_sovits_weights(sovits_path)
 
 

@@ -2,27 +2,26 @@
 # reference: https://github.com/lifeiteng/vall-e
 import math
 from typing import List, Optional
+
 import torch
+from torch import nn
+from torch.nn import functional as F
+from torchmetrics.classification import MulticlassAccuracy
 from tqdm import tqdm
 
-from AR.models.utils import make_pad_mask
-from AR.models.utils import (
+from .utils import make_pad_mask
+from .utils import (
     topk_sampling,
     sample,
-    logits_to_probs,
-    multinomial_sample_one_no_sync,
     dpo_loss,
     make_reject_y,
     get_batch_logps
 )
-from AR.modules.embedding import SinePositionalEmbedding
-from AR.modules.embedding import TokenEmbedding
-from AR.modules.transformer import LayerNorm
-from AR.modules.transformer import TransformerEncoder
-from AR.modules.transformer import TransformerEncoderLayer
-from torch import nn
-from torch.nn import functional as F
-from torchmetrics.classification import MulticlassAccuracy
+from ..modules.embedding import SinePositionalEmbedding
+from ..modules.embedding import TokenEmbedding
+from ..modules.transformer import LayerNorm
+from ..modules.transformer import TransformerEncoder
+from ..modules.transformer import TransformerEncoderLayer
 
 default_config = {
     "embedding_dim": 512,

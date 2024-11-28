@@ -1,6 +1,5 @@
 # modified from https://github.com/feng-yufei/shared_debugging_code/blob/main/train_t2s.py
 import os
-import pdb
 
 if "_CUDA_VISIBLE_DEVICES" in os.environ:
     os.environ["CUDA_VISIBLE_DEVICES"] = os.environ["_CUDA_VISIBLE_DEVICES"]

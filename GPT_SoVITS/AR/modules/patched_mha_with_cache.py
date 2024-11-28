@@ -1,3 +1,7 @@
+import math
+
+import torch
+from torch import Tensor, Optional
 from torch.nn.functional import *
 from torch.nn.functional import (
     _mha_shape_check,
@@ -5,10 +9,6 @@ from torch.nn.functional import (
     _none_or_dtype,
     _in_projection_packed,
 )
-from torch.nn import functional as F
-import torch
-# Tensor = torch.Tensor
-# from typing import Callable, List, Optional, Tuple, Union
 
 
 def multi_head_attention_forward_patched(

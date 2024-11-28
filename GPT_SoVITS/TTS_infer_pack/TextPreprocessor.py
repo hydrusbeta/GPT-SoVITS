@@ -1,21 +1,19 @@
 
-import os, sys
-
-from tqdm import tqdm
-now_dir = os.getcwd()
-sys.path.append(now_dir)
-
+import os
 import re
-import torch
-import LangSegment
-from text import chinese
+import sys
 from typing import Dict, List, Tuple
-from text.cleaner import clean_text
-from text import cleaned_text_to_sequence
-from transformers import AutoModelForMaskedLM, AutoTokenizer
-from TTS_infer_pack.text_segmentation_method import split_big_text, splits, get_method as get_seg_method
 
-from tools.i18n.i18n import I18nAuto, scan_language_list
+import LangSegment
+import torch
+from tqdm import tqdm
+from transformers import AutoModelForMaskedLM, AutoTokenizer
+
+from GPT_SoVITS.tools.i18n.i18n import I18nAuto, scan_language_list
+from ..TTS_infer_pack.text_segmentation_method import split_big_text, splits, get_method as get_seg_method
+from ..text import chinese
+from ..text import cleaned_text_to_sequence
+from ..text.cleaner import clean_text
 
 language=os.environ.get("language","Auto")
 language=sys.argv[-1] if sys.argv[-1] in scan_language_list() else language

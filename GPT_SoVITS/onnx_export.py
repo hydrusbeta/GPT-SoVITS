@@ -1,16 +1,16 @@
-from module.models_onnx import SynthesizerTrn, symbols_v1, symbols_v2
-from AR.models.t2s_lightning_module_onnx import Text2SemanticLightningModule
 import torch
 import torchaudio
 from torch import nn
+
+from AR.models.t2s_lightning_module_onnx import Text2SemanticLightningModule
 from feature_extractor import cnhubert
+from module.models_onnx import SynthesizerTrn, symbols_v1, symbols_v2
 
 cnhubert_base_path = "GPT_SoVITS/pretrained_models/chinese-hubert-base"
 cnhubert.cnhubert_base_path = cnhubert_base_path
 ssl_model = cnhubert.get_model()
 from text import cleaned_text_to_sequence
 import soundfile
-from tools.my_utils import load_audio
 import os
 import json
 

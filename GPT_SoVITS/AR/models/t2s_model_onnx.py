@@ -1,16 +1,15 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/t2s_model.py
 # reference: https://github.com/lifeiteng/vall-e
 import torch
-from tqdm import tqdm
-
-from AR.modules.embedding_onnx import SinePositionalEmbedding
-from AR.modules.embedding_onnx import TokenEmbedding
-from AR.modules.transformer_onnx import LayerNorm
-from AR.modules.transformer_onnx import TransformerEncoder
-from AR.modules.transformer_onnx import TransformerEncoderLayer
 from torch import nn
 from torch.nn import functional as F
 from torchmetrics.classification import MulticlassAccuracy
+
+from ..modules.embedding_onnx import SinePositionalEmbedding
+from ..modules.embedding_onnx import TokenEmbedding
+from ..modules.transformer_onnx import LayerNorm
+from ..modules.transformer_onnx import TransformerEncoder
+from ..modules.transformer_onnx import TransformerEncoderLayer
 
 default_config = {
     "embedding_dim": 512,

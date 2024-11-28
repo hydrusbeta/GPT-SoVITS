@@ -2,7 +2,6 @@
 # reference: https://github.com/lifeiteng/vall-e
 import torch
 import torch.nn.functional as F
-from typing import Tuple
 
 def sequence_mask(length, max_length=None):
     if max_length is None:

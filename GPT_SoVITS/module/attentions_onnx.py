@@ -1,11 +1,13 @@
+import logging
 import math
+from typing import Optional
+
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-from module import commons
+from . import commons
 
-from typing import Optional
 
 class LayerNorm(nn.Module):
     def __init__(self, channels, eps=1e-5):

@@ -1,16 +1,14 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/t2s_lightning_module.py
 # reference: https://github.com/lifeiteng/vall-e
-import os, sys
-
-now_dir = os.getcwd()
-sys.path.append(now_dir)
 from typing import Dict
 
 import torch
 from pytorch_lightning import LightningModule
-from AR.models.t2s_model import Text2SemanticDecoder
-from AR.modules.lr_schedulers import WarmupCosineLRSchedule
-from AR.modules.optim import ScaledAdam
+
+from .t2s_model import Text2SemanticDecoder
+from ..modules.lr_schedulers import WarmupCosineLRSchedule
+from ..modules.optim import ScaledAdam
+
 
 class Text2SemanticLightningModule(LightningModule):
     def __init__(self, config, output_dir, is_train=True):

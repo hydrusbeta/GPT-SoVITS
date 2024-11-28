@@ -1,16 +1,17 @@
-import os,sys
+import os
+import sys
+
 if len(sys.argv)==1:sys.argv.append('v2')
 version="v1"if sys.argv[1]=="v1" else"v2"
 os.environ["version"]=version
-now_dir = os.getcwd()
-sys.path.insert(0, now_dir)
 import warnings
 warnings.filterwarnings("ignore")
-import json,yaml,torch,pdb,re,shutil
+import json,yaml,torch, re,shutil
 import platform
 import psutil
-import signal
+
 torch.manual_seed(233333)
+now_dir = os.getcwd()
 tmp = os.path.join(now_dir, "TEMP")
 os.makedirs(tmp, exist_ok=True)
 os.environ["TEMP"] = tmp
@@ -45,18 +46,15 @@ for site_packages_root in site_packages_roots:
             break
         except PermissionError as e:
             traceback.print_exc()
-from tools import my_utils
-import shutil
-import pdb
+from GPT_SoVITS.tools import my_utils
 from subprocess import Popen
 import signal
 from config import python_exec,infer_device,is_half,exp_root,webui_port_main,webui_port_infer_tts,webui_port_uvr5,webui_port_subfix,is_share
-from tools.i18n.i18n import I18nAuto, scan_language_list
+from GPT_SoVITS.tools.i18n.i18n import I18nAuto, scan_language_list
 language=sys.argv[-1] if sys.argv[-1] in scan_language_list() else "Auto"
 os.environ["language"]=language
 i18n = I18nAuto(language=language)
-from scipy.io import wavfile
-from tools.my_utils import load_audio, check_for_existance, check_details
+from GPT_SoVITS.tools.my_utils import check_for_existance, check_details
 from multiprocessing import cpu_count
 # os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1' # 当遇到mps不支持的步骤时使用cpu
 try:
@@ -246,7 +244,7 @@ def change_tts_inference(bert_path,cnhubert_base_path,gpu_number,gpt_path,sovits
         p_tts_inference=None
         yield i18n("TTS推理进程已关闭"), {'__type__':'update','visible':True}, {'__type__':'update','visible':False}
 
-from tools.asr.config import asr_dict
+from GPT_SoVITS.tools.asr.config import asr_dict
 def open_asr(asr_inp_dir, asr_opt_dir, asr_model, asr_model_size, asr_lang, asr_precision):
     global p_asr
     if(p_asr==None):
@@ -274,7 +272,7 @@ def open_asr(asr_inp_dir, asr_opt_dir, asr_model, asr_model_size, asr_lang, asr_
 
 def close_asr():
     global p_asr
-    if(p_asr!=None):
+    if p_asr is not None:
         kill_process(p_asr.pid)
         p_asr=None
     return "已终止ASR进程", {"__type__":"update","visible":True}, {"__type__":"update","visible":False}

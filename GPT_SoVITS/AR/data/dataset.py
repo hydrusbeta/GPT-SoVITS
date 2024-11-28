@@ -1,23 +1,20 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/data/dataset.py
 # reference: https://github.com/lifeiteng/vall-e
-import pdb
-import sys
 
-# sys.path.append("/data/docker/liujing04/gpt-vits/mq-vits-s1bert_no_bert")
-import traceback, os
+import os
+import traceback
 from typing import Dict
 from typing import List
 
 import numpy as np
 import pandas as pd
-import torch, json
+import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-from transformers import AutoTokenizer
 
-version = os.environ.get('version',None)
+from ...text import cleaned_text_to_sequence
 
-from text import cleaned_text_to_sequence
+version = os.environ.get('version', None)
 
 # from config import exp_dir
 

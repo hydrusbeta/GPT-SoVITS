@@ -1,11 +1,13 @@
 import os
 import sys
+
+import soundfile as sf
 from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QTextEdit
 from PyQt5.QtWidgets import QGridLayout, QVBoxLayout, QWidget, QFileDialog, QStatusBar, QComboBox
-import soundfile as sf
 
-from tools.i18n.i18n import I18nAuto
+from GPT_SoVITS.tools.i18n.i18n import I18nAuto
+
 i18n = I18nAuto()
 
 from inference_webui import gpt_path, sovits_path, change_gpt_weights, change_sovits_weights, get_tts_wav
