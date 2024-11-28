@@ -449,9 +449,9 @@ def validate_inputs(ref_wav_path, ref_text, ref_language, text, text_language, r
 def compute_prompt(ref_wav_path, zero_wav):
     with torch.no_grad():
         wav16k, sr = librosa.load(ref_wav_path, sr=16000)
-        if wav16k.shape[0] > 160000 or wav16k.shape[0] < 48000:
-            gr.Warning(i18n("参考音频在3~10秒范围外，请更换！"))
-            raise OSError(i18n("参考音频在3~10秒范围外，请更换！"))
+        # if wav16k.shape[0] > 160000 or wav16k.shape[0] < 48000:
+        #     gr.Warning(i18n("参考音频在3~10秒范围外，请更换！"))
+        #     raise OSError(i18n("参考音频在3~10秒范围外，请更换！"))
         wav16k = torch.from_numpy(wav16k)
         zero_wav_torch = torch.from_numpy(zero_wav)
         if is_half:
