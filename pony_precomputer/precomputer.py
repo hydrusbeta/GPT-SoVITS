@@ -89,6 +89,7 @@ available_characters = {
     Character.cadance: {"GPT Model": "Cadance-e24.ckpt", "SoVITS Model": "Cadance_e96_s1824.pth"},
     Character.applejack: {"GPT Model": "Applejack-e24.ckpt", "SoVITS Model": "Applejack_e96_s28224.pth"},
     Character.applebloom: {"GPT Model": "Apple Bloom-e24.ckpt", "SoVITS Model": "Apple Bloom_e96_s12000.pth"},
+    Character.princeblueblood: {"GPT Model": "Blueblood1-e40.ckpt", "SoVITS Model": "Blueblood1_e32_s224.pth"}
 }
 
 # walk the directory and parse all audio files:
