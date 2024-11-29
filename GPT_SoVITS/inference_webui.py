@@ -96,6 +96,8 @@ from .module.mel_processing import spectrogram_torch
 from .tools.my_utils import load_audio
 from .tools.i18n.i18n import I18nAuto, scan_language_list
 
+vq_model: SynthesizerTrn = None
+
 language=os.environ.get("language","Auto")
 language=sys.argv[-1] if sys.argv[-1] in scan_language_list() else language
 i18n = I18nAuto(language=language)
@@ -382,7 +384,7 @@ def get_phones_and_bert(text,language,version,final=False):
     if not final and len(phones) < 6:
         return get_phones_and_bert("." + text,language,version,final=True)
 
-    return phones,bert.to(dtype),norm_text
+    return torch.LongTensor(phones), bert.to(dtype), norm_text
 
 
 def merge_short_text_in_array(texts, threshold):
@@ -403,11 +405,11 @@ def merge_short_text_in_array(texts, threshold):
     return result
 
 
-def validate_inputs(ref_wav_path, ref_text, ref_language, text, text_language, ref_free, precomputed_phones1, precomputed_refers):
+def validate_inputs(ref_wav_path, ref_text, ref_language, text, text_language, ref_free, precomputed_phones1, precomputed_bert1, precomputed_ge):
     is_valid = True
 
     # Inputs Validation 1: User must either supply a precomputed spectrogram or a reference audio file.
-    if not ref_wav_path and not precomputed_refers:
+    if not ref_wav_path and precomputed_ge is None:
         msg = i18n('请上传参考音频或提供预先计算的频谱图')
         print(msg)
         gr.Warning(msg)
@@ -417,7 +419,7 @@ def validate_inputs(ref_wav_path, ref_text, ref_language, text, text_language, r
     #   1. supply precomputed phoneme token indices and the prompt language
     #   2. supply a reference text and the prompt language
     #   3. set ref_free to True
-    if not (precomputed_phones1 and ref_language) and not (ref_text and ref_language) and not ref_free:
+    if not (precomputed_phones1 is not None and ref_language) and not (ref_text and ref_language) and not ref_free:
         msg = i18n("您必须执行以下操作之一：1. 提供预先计算的音素和参考语言，2. 提供参考文本和参考语言，或者 3. 将引用自由设置为 True")
         print(msg)
         gr.Warning(msg)
@@ -425,7 +427,7 @@ def validate_inputs(ref_wav_path, ref_text, ref_language, text, text_language, r
 
     # Inputs validation 3: If the user supplies precomputed phoneme token indices and the reference language requires a
     # bert array, then they must also supply that.
-    if precomputed_phones1 and ref_language in LANGUAGES_REQUIRING_BERT:
+    if precomputed_phones1 is not None and precomputed_bert1 is None and ref_language in LANGUAGES_REQUIRING_BERT:
         msg = i18n("由于您提供了预计算的音素并选择了需要 bert 数组的语言，因此您还必须提供预计算的 bert 数组")
         print(msg)
         gr.Warning(msg)
@@ -475,20 +477,20 @@ def compute_prompt(ref_wav_path, zero_wav):
 def preprocess_reference_text(ref_text, ref_language, ref_free, precomputed_phones1, precomputed_bert1):
     ref_language = dict_language[ref_language]
     phones1, bert1 = None, None
-    if precomputed_phones1:
+    if precomputed_phones1 is not None:
         phones1 = precomputed_phones1
-    if precomputed_bert1:
+    if precomputed_bert1 is not None:
         bert1 = precomputed_bert1
-    if precomputed_phones1 and not precomputed_bert1 and ref_language not in LANGUAGES_REQUIRING_BERT:
+    if precomputed_phones1 is not None and precomputed_bert1 is None and ref_language not in LANGUAGES_REQUIRING_BERT:
         bert1 = torch.zeros(
             (1024, len(precomputed_phones1)),
             dtype=torch.float16 if is_half == True else torch.float32,
         ).to(device).to(dtype)
     if ref_free:
         phones1, bert1 = None, None  # Explicitly passing ref_free=True takes precedence even if the user supplied precomputed values.
-    if not precomputed_phones1 and (ref_text is None or len(ref_text) == 0):
+    if precomputed_phones1 is None and (ref_text is None or len(ref_text) == 0):
         ref_free = True
-    if not precomputed_phones1 and not ref_free:
+    if precomputed_phones1 is None and not ref_free:
         ref_text = ref_text.strip("\n")
         if (ref_text[-1] not in splits): ref_text += "。" if ref_language != "en" else "."
         print(i18n("实际输入的参考文本:"), ref_text)
@@ -496,25 +498,26 @@ def preprocess_reference_text(ref_text, ref_language, ref_free, precomputed_phon
     return phones1, bert1, ref_free
 
 
-def preprocess_reference_audios(ref_wav_path, ref_free, inp_refs, precomputed_prompt, precomputed_refers):
+def preprocess_reference_audios(ref_wav_path, ref_free, inp_refs, precomputed_prompt, precomputed_ge):
     if ref_free:
         prompt = None
-    elif precomputed_prompt:
+    elif precomputed_prompt is not None:
         prompt = precomputed_prompt
     else:
         prompt = compute_prompt(ref_wav_path, ZERO_WAV)
-    if precomputed_refers:
-        refers = precomputed_refers
+    if precomputed_ge is not None:
+        ge = precomputed_ge
     else:
         refers = [get_spepc(hps, ref_wav_path).to(dtype).to(device)]
-    if(inp_refs):
-        for path in inp_refs:
-            try:
-                refer = get_spepc(hps, path.name).to(dtype).to(device)
-                refers.append(refer)
-            except:
-                traceback.print_exc()
-    return prompt, refers
+        if(inp_refs):
+            for path in inp_refs:
+                try:
+                    refer = get_spepc(hps, path.name).to(dtype).to(device)
+                    refers.append(refer)
+                except:
+                    traceback.print_exc()
+        ge = vq_model.get_ge(refers)
+    return prompt, ge
 
 
 def preprocess_and_slice_prompt(prompt_text, prompt_language, how_to_cut):
@@ -549,11 +552,11 @@ ZERO_WAV = np.zeros(
 
 def get_tts_wav(ref_wav_path, ref_text, ref_language, prompt_text, prompt_language, how_to_cut=i18n("不切"),
                 top_k=20, top_p=0.6, temperature=0.6, ref_free=False, speed=1, if_freeze=False, inp_refs=None,
-                precomputed_prompt=None, precomputed_phones1=None, precomputed_bert1=None, precomputed_refers=None):
+                precomputed_prompt=None, precomputed_phones1=None, precomputed_bert1=None, precomputed_ge=None):
     global cache
 
     valid = validate_inputs(ref_wav_path, ref_text, ref_language, prompt_text, prompt_language, ref_free,
-                            precomputed_phones1, precomputed_refers)
+                            precomputed_phones1, precomputed_bert1, precomputed_ge)
     if not valid:
         return
 
@@ -561,7 +564,7 @@ def get_tts_wav(ref_wav_path, ref_text, ref_language, prompt_text, prompt_langua
     t0 = ttime()
 
     phones1, bert1, ref_free = preprocess_reference_text(ref_text, ref_language, ref_free, precomputed_phones1, precomputed_bert1)
-    prompt, refers = preprocess_reference_audios(ref_wav_path, ref_free, inp_refs, precomputed_prompt, precomputed_refers)
+    prompt, ge = preprocess_reference_audios(ref_wav_path, ref_free, inp_refs, precomputed_prompt, precomputed_ge)
     prompt_texts, prompt_language = preprocess_and_slice_prompt(prompt_text, prompt_language, how_to_cut)
 
     t1 = ttime()
@@ -578,12 +581,12 @@ def get_tts_wav(ref_wav_path, ref_text, ref_language, prompt_text, prompt_langua
         print(i18n("实际输入的目标文本(每句):"), prompt_text_segment)
         phones2, bert2, norm_text2 = get_phones_and_bert(prompt_text_segment, prompt_language, version)
         print(i18n("前端处理后的文本(每句):"), norm_text2)
-        if phones1:  # Note: If we have phones1, then it is guaranteed that we also have bert1.
+        if phones1 is not None:  # Note: If we have phones1, then it is guaranteed that we also have bert1.
             bert = torch.cat([bert1, bert2], 1)
-            all_phoneme_ids = torch.LongTensor(phones1+phones2).to(device).unsqueeze(0)
+            all_phoneme_ids = torch.cat([phones1, phones2], dim=0).to(device).unsqueeze(0)
         else:
             bert = bert2
-            all_phoneme_ids = torch.LongTensor(phones2).to(device).unsqueeze(0)
+            all_phoneme_ids = phones2.to(device).unsqueeze(0)
 
         bert = bert.to(device).unsqueeze(0)
         all_phoneme_len = torch.tensor([all_phoneme_ids.shape[-1]]).to(device)
@@ -609,7 +612,7 @@ def get_tts_wav(ref_wav_path, ref_text, ref_language, prompt_text, prompt_langua
                 cache[i_text] = pred_semantic
         t3 = ttime()
 
-        audio = (vq_model.decode(pred_semantic, torch.LongTensor(phones2).to(device).unsqueeze(0), refers, speed=speed).detach().cpu().numpy()[0, 0])
+        audio = (vq_model.decode(pred_semantic, torch.LongTensor(phones2).to(device).unsqueeze(0), ge, speed=speed).detach().cpu().numpy()[0, 0])
         max_audio = np.abs(audio).max()  # 简单防止16bit爆音
         if max_audio > 1:
             audio /= max_audio
