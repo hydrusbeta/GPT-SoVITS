@@ -73,6 +73,7 @@ available_characters = {
     Character.scootaloo: {"GPT Model": "Scootaloo-e24.ckpt", "SoVITS Model": "Scootaloo_e96_s7872.pth"},
     Character.rarity: {"GPT Model": "Rarity-e24.ckpt", "SoVITS Model": "Rarity_e96_s25824.pth"},
     Character.rainbow: {"GPT Model": "Rainbow-e24.ckpt", "SoVITS Model": "Rainbow_e96_s26592.pth"},
+    Character.princeblueblood: {"GPT Model": "Blueblood1-e40.ckpt", "SoVITS Model": "Blueblood1_e32_s224.pth"},
     Character.pinkie: {"GPT Model": "Pinkie-e24.ckpt", "SoVITS Model": "Pinkie_e96_s24480.pth"},
     Character.octavia: {"GPT Model": "Octavia-e48.ckpt", "SoVITS Model": "Octavia_e84_s588.pth"},
     Character.nightmaremoon: {"GPT Model": "NightmareMoon-e32.ckpt", "SoVITS Model": "NightmareMoon_e96_s576.pth"},
@@ -88,8 +89,7 @@ available_characters = {
     Character.celestia: {"GPT Model": "Celestia-e24.ckpt", "SoVITS Model": "Celestia_e96_s5376.pth"},
     Character.cadance: {"GPT Model": "Cadance-e24.ckpt", "SoVITS Model": "Cadance_e96_s1824.pth"},
     Character.applejack: {"GPT Model": "Applejack-e24.ckpt", "SoVITS Model": "Applejack_e96_s28224.pth"},
-    Character.applebloom: {"GPT Model": "Apple Bloom-e24.ckpt", "SoVITS Model": "Apple Bloom_e96_s12000.pth"},
-    Character.princeblueblood: {"GPT Model": "Blueblood1-e40.ckpt", "SoVITS Model": "Blueblood1_e32_s224.pth"}
+    Character.applebloom: {"GPT Model": "Apple Bloom-e24.ckpt", "SoVITS Model": "Apple Bloom_e96_s12000.pth"}
 }
 
 # walk the directory and parse all audio files:
@@ -101,7 +101,7 @@ all_files = [item for sublist in [[{'fullPath': os.path.join(dir_path, name),
              for item in sublist]
 
 
-# precompute phones1, bert1, prompt, and refers by character and emotion
+# precompute phones1, bert1, prompt, and ge by character and emotion
 output_folder = os.path.join(os.path.dirname(ref_audio_folder), os.path.basename(ref_audio_folder) + ' Precomp')
 for character in available_characters.keys():
     gpt_model_file, sovits_model_file = get_character_model_files(character, model_folder)
@@ -128,37 +128,38 @@ for character in available_characters.keys():
 
 # Here's an example of how to use the safetensors file. It will save a file named output.wav on your Desktop.
 # For this example, let's just grab the first safetensor of Rainbow Dash with a Neutral emotion
-# neutral_rainbow_dir = os.path.join(output_folder, Character.rainbow.name, Emotion.neutral.name)
-# print(neutral_rainbow_dir)
-# safetensors_file_path = os.path.join(neutral_rainbow_dir, os.listdir(neutral_rainbow_dir)[0])
-# print(safetensors_file_path)
-# with safe_open(safetensors_file_path, framework="pt") as f:
-#     phones1 = f.get_tensor("phones1")
-#     prompt = f.get_tensor("prompt").to(device)
-#     ge = f.get_tensor("ge").to(device)
-#     bert1 = f.get_tensor("bert1").to(device) if "bert1" in f.keys() else None
-# # Instead of passing a ref_wav_path and ref_text, we can pass the precomputed values instead:
-# synthesis_result = get_tts_wav(ref_wav_path=None,
-#                                ref_text=None,
-#                                ref_language='English',
-#                                prompt_text="There's no way they'd shut it down. The weather factory has to keep running.",
-#                                prompt_language='English',
-#                                how_to_cut='凑四句一切',
-#                                top_k=15,
-#                                top_p=1.0,
-#                                temperature=1.0,
-#                                speed=1.0,
-#                                precomputed_prompt=prompt,
-#                                precomputed_phones1=phones1,
-#                                precomputed_bert1=bert1,
-#                                precomputed_ge=ge
-#                                )
-#
-# result_list = list(synthesis_result)
-#
-# if result_list:
-#     last_sampling_rate, last_audio_data = result_list[-1]
-#     output_wav_path = os.path.join(os.path.expanduser('~'), 'Desktop', "output.wav")
-#     soundfile.write(output_wav_path, last_audio_data, last_sampling_rate)
-#     print(f"Audio saved to {output_wav_path}")
+run_example = False  # Set this to true if you want to run the example.
+if run_example:
+    neutral_rainbow_dir = os.path.join(output_folder, Character.rainbow.name, Emotion.neutral.name)
+    safetensors_file_path = os.path.join(neutral_rainbow_dir, os.listdir(neutral_rainbow_dir)[0])
+    print(safetensors_file_path)
+    with safe_open(safetensors_file_path, framework="pt") as f:
+        phones1 = f.get_tensor("phones1")
+        prompt = f.get_tensor("prompt").to(device)
+        ge = f.get_tensor("ge").to(device)
+        bert1 = f.get_tensor("bert1").to(device) if "bert1" in f.keys() else None
+    # Instead of passing a ref_wav_path and ref_text, we can pass the precomputed values instead:
+    synthesis_result = get_tts_wav(ref_wav_path=None,
+                                   ref_text=None,
+                                   ref_language='English',
+                                   prompt_text="There's no way they'd shut it down. The weather factory has to keep running.",
+                                   prompt_language='English',
+                                   how_to_cut='凑四句一切',
+                                   top_k=15,
+                                   top_p=1.0,
+                                   temperature=1.0,
+                                   speed=1.0,
+                                   precomputed_prompt=prompt,
+                                   precomputed_phones1=phones1,
+                                   precomputed_bert1=bert1,
+                                   precomputed_ge=ge
+                                   )
+
+    result_list = list(synthesis_result)
+
+    if result_list:
+        last_sampling_rate, last_audio_data = result_list[-1]
+        output_wav_path = os.path.join(os.path.expanduser('~'), 'Desktop', "output.wav")
+        soundfile.write(output_wav_path, last_audio_data, last_sampling_rate)
+        print(f"Audio saved to {output_wav_path}")
 
