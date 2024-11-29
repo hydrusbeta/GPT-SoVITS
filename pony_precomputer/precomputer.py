@@ -16,7 +16,7 @@ from .SlicedDialogParser import parse_filename
 # 2. Edit the variable model_folder if you saved the models somewhere other than the pretrained_models directory
 # 3. Execute this script from the project root (GPT-SoVITS) as follows:
 #    python -m pony_precomputer.precomputer
-# 4. That will create a new folder named like "<top_folder> Precomp" with precomputed values organized by character and emotion.
+# 4. That will create a new folder named like "<ref_audio_folder> Precomp" with precomputed values organized by character and emotion.
 # 5. A sample script at the bottom of this page shows how you can use the safetensors file to generate audio.
 
 # directory containing all the reference audio files
