@@ -1,26 +1,22 @@
 import warnings
 warnings.filterwarnings("ignore")
-import copy
 import math
-import os
-import pdb
 
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-from module import commons
-from module import modules
-from module import attentions
+from . import commons
+from . import modules
+from . import attentions
 
-from torch.nn import Conv1d, ConvTranspose1d, AvgPool1d, Conv2d
+from torch.nn import Conv1d, ConvTranspose1d, Conv2d
 from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
-from module.commons import init_weights, get_padding
-from module.mrte_model import MRTE
-from module.quantize import ResidualVectorQuantizer
-# from text import symbols
-from text import symbols as symbols_v1
-from text import symbols2 as symbols_v2
+from .commons import init_weights, get_padding
+from .mrte_model import MRTE
+from .quantize import ResidualVectorQuantizer
+from ..text import symbols as symbols_v1
+from ..text import symbols2 as symbols_v2
 from torch.cuda.amp import autocast
 import contextlib
 
@@ -983,29 +979,32 @@ class SynthesizerTrn(nn.Module):
         o = self.dec((z * y_mask)[:, :, :], g=ge)
         return o, y_mask, (z, z_p, m_p, logs_p)
 
-    @torch.no_grad()
-    def decode(self, codes, text, refer, noise_scale=0.5,speed=1):
-        def get_ge(refer):
+    def get_ge(self, refer):
+        def get_ge_inner(refer):
             ge = None
             if refer is not None:
                 refer_lengths = torch.LongTensor([refer.size(2)]).to(refer.device)
                 refer_mask = torch.unsqueeze(
                     commons.sequence_mask(refer_lengths, refer.size(2)), 1
                 ).to(refer.dtype)
-                if (self.version == "v1"):
+                if self.version == "v1":
                     ge = self.ref_enc(refer * refer_mask, refer_mask)
                 else:
                     ge = self.ref_enc(refer[:, :704] * refer_mask, refer_mask)
             return ge
-        if(type(refer)==list):
-            ges=[]
+        if type(refer) == list:
+            ges = []
             for _refer in refer:
-                ge=get_ge(_refer)
+                ge = get_ge_inner(_refer)
                 ges.append(ge)
-            ge=torch.stack(ges,0).mean(0)
+            ge = torch.stack(ges,0).mean(0)
         else:
-            ge=get_ge(refer)
+            ge = get_ge_inner(refer)
+        return ge
 
+
+    @torch.no_grad()
+    def decode(self, codes, text, ge, noise_scale=0.5, speed=1):
         y_lengths = torch.LongTensor([codes.size(2) * 2]).to(codes.device)
         text_lengths = torch.LongTensor([text.size(-1)]).to(text.device)
 

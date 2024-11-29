@@ -1,25 +1,21 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/t2s_model.py
 # reference: https://github.com/lifeiteng/vall-e
 import argparse
+import os
 from typing import Optional
-from my_utils import load_audio
-from text import cleaned_text_to_sequence
+
+import soundfile
 import torch
 import torchaudio
-
 from torch import IntTensor, LongTensor, Tensor, nn
 from torch.nn import functional as F
-
 from transformers import AutoModelForMaskedLM, AutoTokenizer
-from feature_extractor import cnhubert
 
 from AR.models.t2s_lightning_module import Text2SemanticLightningModule
-from module.models_onnx import SynthesizerTrn
-
+from feature_extractor import cnhubert
 from inference_webui import get_phones_and_bert
-
-import os
-import soundfile
+from module.models_onnx import SynthesizerTrn
+from tools.my_utils import load_audio
 
 default_config = {
     "embedding_dim": 512,

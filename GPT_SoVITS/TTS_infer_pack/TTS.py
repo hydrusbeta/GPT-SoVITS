@@ -1,31 +1,30 @@
-from copy import deepcopy
+import gc
 import math
-import os, sys, gc
-import random
-import traceback
-
-from tqdm import tqdm
-now_dir = os.getcwd()
-sys.path.append(now_dir)
-import ffmpeg
 import os
-from typing import Generator, List, Tuple, Union
+import random
+import sys
+import traceback
+from copy import deepcopy
+from time import time as ttime
+from typing import List, Tuple, Union
+
+import ffmpeg
+import librosa
 import numpy as np
 import torch
-import torch.nn.functional as F
 import yaml
+from tqdm import tqdm
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 
-from AR.models.t2s_lightning_module import Text2SemanticLightningModule
-from feature_extractor.cnhubert import CNHubert
-from module.models import SynthesizerTrn
-import librosa
-from time import time as ttime
-from tools.i18n.i18n import I18nAuto, scan_language_list
-from tools.my_utils import load_audio
-from module.mel_processing import spectrogram_torch
-from TTS_infer_pack.text_segmentation_method import splits
-from TTS_infer_pack.TextPreprocessor import TextPreprocessor
+from GPT_SoVITS.tools.i18n.i18n import I18nAuto, scan_language_list
+from GPT_SoVITS.tools.my_utils import load_audio
+from ..AR.models.t2s_lightning_module import Text2SemanticLightningModule
+from ..TTS_infer_pack.TextPreprocessor import TextPreprocessor
+from ..TTS_infer_pack.text_segmentation_method import splits
+from ..feature_extractor.cnhubert import CNHubert
+from ..module.mel_processing import spectrogram_torch
+from ..module.models import SynthesizerTrn
+
 language=os.environ.get("language","Auto")
 language=sys.argv[-1] if sys.argv[-1] in scan_language_list() else language
 i18n = I18nAuto(language=language)

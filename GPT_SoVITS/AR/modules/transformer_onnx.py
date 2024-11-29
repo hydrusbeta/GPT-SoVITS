@@ -10,11 +10,12 @@ from typing import Tuple
 from typing import Union
 
 import torch
-from AR.modules.activation_onnx import MultiheadAttention
-from AR.modules.scaling import BalancedDoubleSwish
-from torch import nn
 from torch import Tensor
+from torch import nn
 from torch.nn import functional as F
+
+from ..modules.activation_onnx import MultiheadAttention
+from ..modules.scaling import BalancedDoubleSwish
 
 _shape_t = Union[int, List[int], torch.Size]
 
@@ -104,7 +105,7 @@ class IdentityNorm(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    r"""TransformerEncoder is a stack of N encoder layers. Users can build the
+    """TransformerEncoder is a stack of N encoder layers. Users can build the
     BERT(https://arxiv.org/abs/1810.04805) model with corresponding parameters.
 
     Args:
@@ -116,10 +117,10 @@ class TransformerEncoder(nn.Module):
             TransformerEncoder when padding rate is high. Default: ``True`` (enabled).
 
     Examples::
-        >>> encoder_layer = TransformerEncoderLayer(d_model=512, nhead=8)
-        >>> transformer_encoder = TransformerEncoder(encoder_layer, num_layers=6)
-        >>> src = torch.rand(10, 32, 512)
-        >>> out = transformer_encoder(src)
+        >> encoder_layer = TransformerEncoderLayer(d_model=512, nhead=8)
+        >> transformer_encoder = TransformerEncoder(encoder_layer, num_layers=6)
+        >> src = torch.rand(10, 32, 512)
+        >> out = transformer_encoder(src)
     """
     __constants__ = ["norm"]
 

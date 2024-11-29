@@ -95,32 +95,29 @@ RESP:
 失败: 返回包含错误信息的 json, http code 400
     
 """
+import argparse
 import os
+import signal
+import subprocess
 import sys
 import traceback
+import wave
+from io import BytesIO
 from typing import Generator
 
-now_dir = os.getcwd()
-sys.path.append(now_dir)
-sys.path.append("%s/GPT_SoVITS" % (now_dir))
-
-import argparse
-import subprocess
-import wave
-import signal
 import numpy as np
 import soundfile as sf
-from fastapi import FastAPI, Request, HTTPException, Response
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi import FastAPI, UploadFile, File
 import uvicorn
-from io import BytesIO
-from tools.i18n.i18n import I18nAuto
-from GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
-from GPT_SoVITS.TTS_infer_pack.text_segmentation_method import get_method_names as get_cut_method_names
+from fastapi import FastAPI
+from fastapi import Response
+from fastapi.responses import JSONResponse
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-# print(sys.path)
+
+from GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
+from GPT_SoVITS.TTS_infer_pack.text_segmentation_method import get_method_names as get_cut_method_names
+from GPT_SoVITS.tools.i18n.i18n import I18nAuto
+
 i18n = I18nAuto()
 cut_method_names = get_cut_method_names()
 

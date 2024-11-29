@@ -3,7 +3,8 @@
 import torch
 from torch import nn
 from torch.nn.utils import remove_weight_norm, weight_norm
-from module.attentions import MultiHeadAttention
+
+from .attentions import MultiHeadAttention
 
 
 class MRTE(nn.Module):

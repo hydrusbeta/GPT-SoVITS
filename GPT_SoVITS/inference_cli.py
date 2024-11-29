@@ -1,18 +1,14 @@
 import argparse
 import os
-import sys
 from tempfile import NamedTemporaryFile
 
 import soundfile as sf
 
-# This CLI lives in the GPT_SoVITS folder but needs to import the tools module, which is located outside that folder.
-# GPT_SoVITS is not a namespace package, so we cannot use relative imports. As a workaround, we can add the current
-# directory to the system path and invoke the CLI from the root of the project like this:
-# > python GPT_SoVITS/inference_cli.py [arguments]
-sys.path.append(os.getcwd())
+from .inference_webui import change_gpt_weights, change_sovits_weights, get_tts_wav
+from .tools.i18n.i18n import I18nAuto
 
-from tools.i18n.i18n import I18nAuto
-from GPT_SoVITS.inference_webui import change_gpt_weights, change_sovits_weights, get_tts_wav
+# Invoke this script from the project root (GPT-SoVITS) using a terminal/command prompt as follows:
+# python -m GPT_SoVITS.inference_cli [options]
 
 i18n = I18nAuto()
 
@@ -42,11 +38,11 @@ def synthesize(GPT_model_path, SoVITS_model_path, ref_audio_path, ref_text_path,
     change_sovits_weights(sovits_path=SoVITS_model_path)
 
     # Synthesize audio
-    synthesis_result = get_tts_wav(ref_wav_path=ref_audio_path, 
-                                   prompt_text=ref_text, 
-                                   prompt_language=i18n(ref_language), 
-                                   text=target_text, 
-                                   text_language=i18n(target_language),
+    synthesis_result = get_tts_wav(ref_wav_path=ref_audio_path,
+                                   ref_text=ref_text,
+                                   ref_language=i18n(ref_language),
+                                   prompt_text=target_text,
+                                   prompt_language=i18n(target_language),
                                    how_to_cut=how_to_cut,
                                    top_k=top_k,
                                    top_p=top_p,

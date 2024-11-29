@@ -142,35 +142,33 @@ RESP: 无
 
 
 import argparse
-import os,re
-import sys
-
-now_dir = os.getcwd()
-sys.path.append(now_dir)
-sys.path.append("%s/GPT_SoVITS" % (now_dir))
-
-import signal
-import LangSegment
-from time import time as ttime
-import torch
-import librosa
-import soundfile as sf
-from fastapi import FastAPI, Request, Query, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
-import uvicorn
-from transformers import AutoModelForMaskedLM, AutoTokenizer
-import numpy as np
-from feature_extractor import cnhubert
-from io import BytesIO
-from module.models import SynthesizerTrn
-from AR.models.t2s_lightning_module import Text2SemanticLightningModule
-from text import cleaned_text_to_sequence
-from text.cleaner import clean_text
-from module.mel_processing import spectrogram_torch
-from tools.my_utils import load_audio
-import config as global_config
 import logging
+import os
+import re
+import signal
 import subprocess
+import sys
+from io import BytesIO
+from time import time as ttime
+
+import LangSegment
+import librosa
+import numpy as np
+import soundfile as sf
+import torch
+import uvicorn
+from fastapi import FastAPI, Request, Query
+from fastapi.responses import StreamingResponse, JSONResponse
+from transformers import AutoModelForMaskedLM, AutoTokenizer
+
+import config as global_config
+from GPT_SoVITS.AR.models.t2s_lightning_module import Text2SemanticLightningModule
+from GPT_SoVITS.feature_extractor import cnhubert
+from GPT_SoVITS.module.mel_processing import spectrogram_torch
+from GPT_SoVITS.module.models import SynthesizerTrn
+from GPT_SoVITS.text import chinese
+from GPT_SoVITS.text import cleaned_text_to_sequence
+from GPT_SoVITS.text.cleaner import clean_text
 
 
 class DefaultRefer:
@@ -312,7 +310,7 @@ def get_bert_inf(phones, word2ph, norm_text, language):
 
     return bert
 
-from text import chinese
+
 def get_phones_and_bert(text,language,version,final=False):
     if language in {"en", "all_zh", "all_ja", "all_ko", "all_yue"}:
         language = language.replace("all_","")

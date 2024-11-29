@@ -1,11 +1,13 @@
 import os
 import sys
+
+import soundfile as sf
 from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QTextEdit
 from PyQt5.QtWidgets import QGridLayout, QVBoxLayout, QWidget, QFileDialog, QStatusBar, QComboBox
-import soundfile as sf
 
-from tools.i18n.i18n import I18nAuto
+from GPT_SoVITS.tools.i18n.i18n import I18nAuto
+
 i18n = I18nAuto()
 
 from inference_webui import gpt_path, sovits_path, change_gpt_weights, change_sovits_weights, get_tts_wav
@@ -284,11 +286,11 @@ class GPTSoVITSGUI(QMainWindow):
             change_sovits_weights(sovits_path=SoVITS_model_path)
             self.SoVITS_Path = SoVITS_model_path
 
-        synthesis_result = get_tts_wav(ref_wav_path=ref_audio_path, 
-                                       prompt_text=ref_text, 
-                                       prompt_language=language_combobox, 
-                                       text=target_text, 
-                                       text_language=target_language_combobox)
+        synthesis_result = get_tts_wav(ref_wav_path=ref_audio_path,
+                                       ref_text=ref_text,
+                                       ref_language=language_combobox,
+                                       prompt_text=target_text,
+                                       prompt_language=target_language_combobox)
 
         result_list = list(synthesis_result)
 

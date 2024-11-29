@@ -1,11 +1,9 @@
-import time
+import os
 
 import librosa
 import torch
-import torch.nn.functional as F
-import soundfile as sf
-import os
 from transformers import logging as tf_logging
+
 tf_logging.set_verbosity_error()
 
 import logging
@@ -16,7 +14,6 @@ from transformers import (
     HubertModel,
 )
 
-import utils
 import torch.nn as nn
 
 cnhubert_base_path = None
@@ -104,7 +101,7 @@ def get_content(hmodel, wav_16k_tensor):
 if __name__ == "__main__":
     model = get_model()
     src_path = "/Users/Shared/原音频2.wav"
-    wav_16k_tensor = utils.load_wav_to_torch_and_resample(src_path, 16000)
+    wav_16k_tensor, sampling_rate = librosa.load(src_path, sr=16000)
     model = model
     wav_16k_tensor = wav_16k_tensor
     feats = get_content(model, wav_16k_tensor)

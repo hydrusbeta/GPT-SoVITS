@@ -6,14 +6,13 @@
 
 """Residual vector quantizer implementation."""
 
-from dataclasses import dataclass, field
-import math
 import typing as tp
+from dataclasses import dataclass, field
 
 import torch
 from torch import nn
 
-from module.core_vq import ResidualVectorQuantization
+from .core_vq import ResidualVectorQuantization
 
 
 @dataclass

@@ -1,12 +1,12 @@
 # reference: https://huggingface.co/spaces/Naozumi0512/Bert-VITS2-Cantonese-Yue/blob/main/text/chinese.py
 
-import sys
 import re
-import cn2an
 
+import cn2an
 from pyjyutping import jyutping
-from text.symbols import punctuation
-from text.zh_normalization.text_normlization import TextNormalizer
+
+from .symbols import punctuation
+from .zh_normalization.text_normlization import TextNormalizer
 
 normalizer = lambda x: cn2an.transform(x, "an2cn")
 

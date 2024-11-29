@@ -6,12 +6,13 @@
 全部按英文识别
 全部按日文识别
 '''
+import logging
+import os
 import random
-import os, re, logging
+import re
 import sys
-now_dir = os.getcwd()
-sys.path.append(now_dir)
-sys.path.append("%s/GPT_SoVITS" % (now_dir))
+
+import torch
 
 logging.getLogger("markdown_it").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
@@ -20,8 +21,6 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("asyncio").setLevel(logging.ERROR)
 logging.getLogger("charset_normalizer").setLevel(logging.ERROR)
 logging.getLogger("torchaudio._extension").setLevel(logging.ERROR)
-import pdb
-import torch
 
 try:
     import gradio.analytics as analytics
@@ -46,7 +45,7 @@ version=os.environ.get("version","v2")
 import gradio as gr
 from TTS_infer_pack.TTS import TTS, TTS_Config
 from TTS_infer_pack.text_segmentation_method import get_method
-from tools.i18n.i18n import I18nAuto, scan_language_list
+from GPT_SoVITS.tools.i18n.i18n import I18nAuto, scan_language_list
 
 language=os.environ.get("language","Auto")
 language=sys.argv[-1] if sys.argv[-1] in scan_language_list() else language

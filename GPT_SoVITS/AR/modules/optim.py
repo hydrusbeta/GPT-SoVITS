@@ -66,7 +66,7 @@ class BatchedOptimizer(Optimizer):
         </code>
 
         Args:
-          group: a parameter group, which is a list of parameters; should be
+          param_group: a parameter group, which is a list of parameters; should be
                 one of self.param_groups.
           group_params_names: name for each parameter in group,
                 which is List[str].
