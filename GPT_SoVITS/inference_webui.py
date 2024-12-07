@@ -258,7 +258,7 @@ def change_gpt_weights(gpt_path):
     t2s_model = t2s_model.to(device)
     t2s_model.eval()
     total = sum([param.nelement() for param in t2s_model.parameters()])
-    print("Number of parameter: %.2fM" % (total / 1e6))
+    # print("Number of parameter: %.2fM" % (total / 1e6))
     with open("./weight.json")as f:
         data=f.read()
         data=json.loads(data)
@@ -493,7 +493,7 @@ def preprocess_reference_text(ref_text, ref_language, ref_free, precomputed_phon
     if precomputed_phones1 is None and not ref_free:
         ref_text = ref_text.strip("\n")
         if (ref_text[-1] not in splits): ref_text += "。" if ref_language != "en" else "."
-        print(i18n("实际输入的参考文本:"), ref_text)
+        # print(i18n("实际输入的参考文本:"), ref_text)
         phones1, bert1, _ = get_phones_and_bert(ref_text, ref_language, version)
     return phones1, bert1, ref_free
 

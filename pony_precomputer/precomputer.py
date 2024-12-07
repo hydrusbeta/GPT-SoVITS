@@ -1,6 +1,7 @@
 import os
 from typing import List
 
+import librosa
 import soundfile
 from safetensors import safe_open
 from safetensors.torch import save_file
@@ -18,6 +19,10 @@ from .SlicedDialogParser import parse_filename
 #    python -m pony_precomputer.precomputer
 # 4. That will create a new folder named like "<ref_audio_folder> Precomp" with precomputed values organized by character and emotion.
 # 5. A sample script at the bottom of this page shows how you can use the safetensors file to generate audio.
+
+# Note: This script will attempt to find at least 5 of the "best" files to use for each emotion of each character. Files
+# with no noise that are between 3 and 10 seconds in length are considered ideal, but it will include other files if it
+# cannot find at least 5 ideal ones. If there are more than 5 ideal files, all of them will be included in the output.
 
 # directory containing all the reference audio files
 ref_audio_folder = os.path.join(os.path.expanduser('~'), 'Desktop', 'Sliced Dialog')
@@ -63,6 +68,49 @@ def save_to_safetensors(phones1, prompt, ge, bert1, ref_language, precomp_out_pa
     save_file(precomputed_data, precomp_out_path)
 
 
+def get_duration_in_seconds(file_path):
+    wav16k, _ = librosa.load(file_path, sr=16000)
+    return wav16k.shape[0]/16000
+
+
+def combine_filters(*args):
+    return lambda item: all(f(item) for f in args)
+
+
+def add_files_with_filter(limit, files, files_for_character_and_emotion, sort_key, *filters):
+    if len(files) < limit:
+        filtered_files = list(filter(combine_filters(*filters), files_for_character_and_emotion))
+        if sort_key:
+            filtered_files = sorted(filtered_files, key=sort_key)
+        files += filtered_files[:limit-len(files)]
+    return files
+
+
+def get_at_least_5_best_files(files, character, emotion):
+    files_for_character_and_emotion = [item for item in files
+                                       if item['metadata']['character'] == character
+                                       and emotion in item['metadata']['emotions']]
+    filter_no_noise =     lambda item: item['metadata']['noise'] == Noise.nothing
+    filter_noisy =        lambda item: item['metadata']['noise'] == Noise.noisy
+    filter_verynoisy =    lambda item: item['metadata']['noise'] == Noise.verynoisy
+    filter_ideal_length = lambda item: 3 < item['duration (s)'] < 10
+    filter_long =         lambda item: item['duration (s)'] >= 10
+    filter_short =        lambda item: item['duration (s)'] <= 3
+
+    files = []
+    files = add_files_with_filter(999, files, files_for_character_and_emotion, None, filter_no_noise, filter_ideal_length)
+    files = add_files_with_filter(5, files, files_for_character_and_emotion, lambda f: f['duration (s)'], filter_no_noise, filter_long)
+    files = add_files_with_filter(5, files, files_for_character_and_emotion, None, filter_noisy, filter_ideal_length)
+    files = add_files_with_filter(5, files, files_for_character_and_emotion, lambda f: f['duration (s)'], filter_noisy, filter_long)
+    files = add_files_with_filter(5, files, files_for_character_and_emotion, None, filter_verynoisy, filter_ideal_length)
+    files = add_files_with_filter(5, files, files_for_character_and_emotion, lambda f: f['duration (s)'], filter_verynoisy, filter_long)
+    files = add_files_with_filter(5, files, files_for_character_and_emotion, lambda f: -f['duration (s)'], filter_no_noise, filter_short)
+    files = add_files_with_filter(5, files, files_for_character_and_emotion, lambda f: -f['duration (s)'], filter_noisy, filter_short)
+    files = add_files_with_filter(5, files, files_for_character_and_emotion, lambda f: -f['duration (s)'], filter_verynoisy, filter_short)
+
+    return files
+
+
 available_characters = {
     Character.twilight: {"GPT Model": "Twilight-e24.ckpt", "SoVITS Model": "Twilight_e96_s46464.pth"},
     Character.trixie: {"GPT Model": "Trixie-e8.ckpt", "SoVITS Model": "Trixie_e24_s1368.pth"},
@@ -95,6 +143,7 @@ available_characters = {
 # walk the directory and parse all audio files:
 all_files = [item for sublist in [[{'fullPath': os.path.join(dir_path, name),
                                     'fileName': name,
+                                    'duration (s)': get_duration_in_seconds(os.path.join(dir_path, name)),
                                     'metadata': parse_filename(name)}
                                    for name in file_names if (name[-4::] != '.txt') and (name[-4::] != '.zip')]
                                   for dir_path, dir_names, file_names in os.walk(ref_audio_folder)]
@@ -107,15 +156,13 @@ for character in available_characters.keys():
     gpt_model_file, sovits_model_file = get_character_model_files(character, model_folder)
     change_gpt_weights(gpt_model_file)
     change_sovits_weights(sovits_model_file)
-    files_for_this_character = [item for item in all_files if
-                                item['metadata']['noise'] == Noise.nothing and
-                                item['metadata']['character'] == character]
     for emotion in Emotion:
-        files_for_this_emotion = [item for item in files_for_this_character if emotion in item['metadata']['emotions']]
+        files_for_this_emotion = get_at_least_5_best_files(all_files, character, emotion)
         if len(files_for_this_emotion) != 0:
             directory = os.path.join(output_folder, character.name, emotion.name)
             os.makedirs(directory, exist_ok=True)
             for file in files_for_this_emotion:
+                print(character, emotion, file['metadata']['noise'], file['duration (s)'], file['fileName'])
                 phones1, bert1, ref_free = preprocess_reference_text(file['metadata']['transcript'], ref_language, False, None, None)
                 prompt, ge = preprocess_reference_audios(file['fullPath'], ref_free, None, None, None)
                 precomp_out_path = os.path.join(directory, os.path.splitext(file['fileName'])[0] + '.safetensors')

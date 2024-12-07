@@ -46,3 +46,26 @@ def parse_filename(filename: str) -> Dict:
             'transcript': parse_transcript(transcript),
             'extension': extension
             }
+
+
+# This method is not needed. You can parse the audio file name to get an identical transcript, and it's way faster.
+# I compared the output of this method against the output of parse_transcript for all Noise.nothing s1-s9 and Rainbow
+# Roadtrip files on 11/29/2024 and the results were identical in 100% of cases. I'm keeping this method around to
+# remind myself that I
+# already checked this.
+# import os.path
+# def get_transcript(dir_path: str, filename: str) -> str:
+#     filename_sans_extension = os.path.splitext(os.path.splitext(filename)[0])[0]  # eliminate .flac and ..flac
+#     candidates = [item for item in os.listdir(dir_path) if filename_sans_extension in item and os.path.splitext(item)[1] == '.txt']
+#     if not candidates:
+#         raise Exception(f"ERROR! Unable to find transcript for {os.path.join(dir_path, filename)}")
+#     if len(candidates) > 1:
+#         raise Exception(f"ERROR! There is more than one transcript file for {os.path.join(dir_path, filename)}")
+#     transcript_file_path = os.path.join(dir_path, candidates[0])
+#     with open(transcript_file_path, 'r') as file:
+#         contents = file.read()
+#     if '\n' in contents:
+#         print(f"WARNING! file {transcript_file_path} contains newlines.")
+#     if not contents.strip():
+#         print(f"WARNING! file {transcript_file_path} is empty.")
+#     return contents
