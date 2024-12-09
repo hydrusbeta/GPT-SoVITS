@@ -56,16 +56,16 @@ def get_character_model_files(character: Character, directory: str) -> tuple[str
     return gpt_model_file, sovits_model_file
 
 
-def save_to_safetensors(phones1, prompt, ge, bert1, ref_language, precomp_out_path):
-    precomputed_data = {
-        "phones1": phones1,
-        "prompt": prompt,
-        "ge": ge,
-    }
+def add_to_safetensors_dict(precomputed_data, emotion, index, phones1, prompt, ge, bert1, ref_language):
+    prefix = get_prefix(emotion.name, index)
+    precomputed_data[prefix + "phones1"] = phones1
+    precomputed_data[prefix + "prompt"] = prompt
+    precomputed_data[prefix + "ge"] = ge
+
     # bert1 is by far the largest piece of data, so leave it out unless the language requires it.
     if ref_language in LANGUAGES_REQUIRING_BERT:
-        precomputed_data["bert1"] = bert1
-    save_file(precomputed_data, precomp_out_path)
+        precomputed_data[prefix + "bert1"] = bert1
+    return precomputed_data
 
 
 def get_duration_in_seconds(file_path):
@@ -109,6 +109,10 @@ def get_at_least_5_best_files(files, character, emotion):
     files = add_files_with_filter(5, files, files_for_character_and_emotion, lambda f: -f['duration (s)'], filter_verynoisy, filter_short)
 
     return files
+
+
+def get_prefix(emotion_name, index):
+    return emotion_name + "." + str(index) + "."
 
 
 available_characters = {
@@ -156,35 +160,38 @@ for character in available_characters.keys():
     gpt_model_file, sovits_model_file = get_character_model_files(character, model_folder)
     change_gpt_weights(gpt_model_file)
     change_sovits_weights(sovits_model_file)
+    precomp_out_path = os.path.join(output_folder, character.name + '_precomp.safetensors')
+    precomputed_data = dict()
     for emotion in Emotion:
         files_for_this_emotion = get_at_least_5_best_files(all_files, character, emotion)
-        if len(files_for_this_emotion) != 0:
-            directory = os.path.join(output_folder, character.name, emotion.name)
-            os.makedirs(directory, exist_ok=True)
-            for file in files_for_this_emotion:
-                print(character, emotion, file['metadata']['noise'], file['duration (s)'], file['fileName'])
-                phones1, bert1, ref_free = preprocess_reference_text(file['metadata']['transcript'], ref_language, False, None, None)
-                prompt, ge = preprocess_reference_audios(file['fullPath'], ref_free, None, None, None)
-                precomp_out_path = os.path.join(directory, os.path.splitext(file['fileName'])[0] + '.safetensors')
-                save_to_safetensors(phones1, prompt, ge, bert1, ref_language, precomp_out_path)
-
-
-
+        for i, file in enumerate(files_for_this_emotion):
+            print(character, emotion, file['metadata']['noise'], file['duration (s)'], file['fileName'])
+            phones1, bert1, ref_free = preprocess_reference_text(file['metadata']['transcript'], ref_language, False, None, None)
+            prompt, ge = preprocess_reference_audios(file['fullPath'], ref_free, None, None, None)
+            add_to_safetensors_dict(precomputed_data, emotion, i, phones1, prompt, ge, bert1, ref_language)
+    if len(precomputed_data.keys()) > 0:
+        save_file(precomputed_data, precomp_out_path)
 
 
 
 # Here's an example of how to use the safetensors file. It will save a file named output.wav on your Desktop.
 # For this example, let's just grab the first safetensor of Rainbow Dash with a Neutral emotion
-run_example = False  # Set this to true if you want to run the example.
+run_example = True  # Set this to true if you want to run the example.
 if run_example:
-    neutral_rainbow_dir = os.path.join(output_folder, Character.rainbow.name, Emotion.neutral.name)
-    safetensors_file_path = os.path.join(neutral_rainbow_dir, os.listdir(neutral_rainbow_dir)[0])
-    print(safetensors_file_path)
-    with safe_open(safetensors_file_path, framework="pt") as f:
-        phones1 = f.get_tensor("phones1")
-        prompt = f.get_tensor("prompt").to(device)
-        ge = f.get_tensor("ge").to(device)
-        bert1 = f.get_tensor("bert1").to(device) if "bert1" in f.keys() else None
+    desired_character = Character.rainbow
+    desired_emotion = Emotion.neutral
+    gpt_model_file, sovits_model_file = get_character_model_files(desired_character, model_folder)
+    change_gpt_weights(gpt_model_file)
+    change_sovits_weights(sovits_model_file)
+    character_path = os.path.join(output_folder, desired_character.name + '_precomp.safetensors')
+    print(f"loading {character_path} for example")
+    with safe_open(character_path, framework="pt") as f:
+        count = len([item for item in f.keys() if item.startswith(desired_emotion.name) and item.endswith('phones1')])
+        print("number of files available for " + desired_emotion.name + " " + desired_character.name + ": " + str(count))
+        phones1 = f.get_tensor(get_prefix(desired_emotion.name, 0) + "phones1")
+        prompt = f.get_tensor(get_prefix(desired_emotion.name, 0) + "prompt").to(device)
+        ge = f.get_tensor(get_prefix(desired_emotion.name, 0) + "ge").to(device)
+        bert1 = f.get_tensor(get_prefix(desired_emotion.name, 0) + "bert1").to(device) if "bert1" in f.keys() else None
     # Instead of passing a ref_wav_path and ref_text, we can pass the precomputed values instead:
     synthesis_result = get_tts_wav(ref_wav_path=None,
                                    ref_text=None,
