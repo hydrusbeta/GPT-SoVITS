@@ -1,5 +1,6 @@
 import argparse
 import os
+import random
 from tempfile import NamedTemporaryFile
 
 import soundfile as sf
@@ -22,11 +23,12 @@ def synthesize(GPT_model_path, SoVITS_model_path, precomputed_traits_file, ref_a
         ref_audio_path, ref_text = None, None
         with safe_open(precomputed_traits_file, framework="pt") as f:
             count = len([item for item in f.keys() if item.startswith(precomputed_trait) and item.endswith('phones1')])
-            print(f"number of datapoints available for {precomputed_trait}: {count}", flush=True)
-            phones1 = f.get_tensor(get_prefix(precomputed_trait, 0) + "phones1")
-            prompt = f.get_tensor(get_prefix(precomputed_trait, 0) + "prompt").to(device)
-            ge = f.get_tensor(get_prefix(precomputed_trait, 0) + "ge").to(device)
-            bert1 = f.get_tensor(get_prefix(precomputed_trait, 0) + "bert1").to(device) if "bert1" in f.keys() else None
+            choice = random.randint(0, count-1)
+            print(f"number of datapoints available for {precomputed_trait}: {count}. Choice: {choice}", flush=True)
+            phones1 = f.get_tensor(get_prefix(precomputed_trait, choice) + "phones1")
+            prompt = f.get_tensor(get_prefix(precomputed_trait, choice) + "prompt").to(device)
+            ge = f.get_tensor(get_prefix(precomputed_trait, choice) + "ge").to(device)
+            bert1 = f.get_tensor(get_prefix(precomputed_trait, choice) + "bert1").to(device) if "bert1" in f.keys() else None
     else:
         print(f"No precomputed trait was supplied. Using reference audio.", flush=True)
         phones1, prompt, ge, bert1 = None, None, None, None
