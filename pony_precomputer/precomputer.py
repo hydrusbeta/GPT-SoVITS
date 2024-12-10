@@ -7,7 +7,7 @@ from safetensors import safe_open
 from safetensors.torch import save_file
 
 from GPT_SoVITS.inference_webui import change_gpt_weights, change_sovits_weights, preprocess_reference_text, \
-    preprocess_reference_audios, get_tts_wav, device, LANGUAGES_REQUIRING_BERT
+    preprocess_reference_audios, get_tts_wav, device, LANGUAGES_REQUIRING_BERT, get_prefix
 from .SlicedDialogEnums import Character
 from .SlicedDialogEnums import Emotion
 from .SlicedDialogEnums import Noise
@@ -110,11 +110,6 @@ def get_at_least_5_best_files(files, character, emotion):
 
     return files
 
-
-def get_prefix(emotion_name, index):
-    return emotion_name + "." + str(index) + "."
-
-
 available_characters = {
     Character.twilight: {"GPT Model": "Twilight-e24.ckpt", "SoVITS Model": "Twilight_e96_s46464.pth"},
     Character.trixie: {"GPT Model": "Trixie-e8.ckpt", "SoVITS Model": "Trixie_e24_s1368.pth"},
@@ -187,7 +182,7 @@ if run_example:
     print(f"loading {character_path} for example")
     with safe_open(character_path, framework="pt") as f:
         count = len([item for item in f.keys() if item.startswith(desired_emotion.name) and item.endswith('phones1')])
-        print("number of files available for " + desired_emotion.name + " " + desired_character.name + ": " + str(count))
+        print(f"number of datapoints available for {desired_emotion.name} {desired_character.name}: {count}")
         phones1 = f.get_tensor(get_prefix(desired_emotion.name, 0) + "phones1")
         prompt = f.get_tensor(get_prefix(desired_emotion.name, 0) + "prompt").to(device)
         ge = f.get_tensor(get_prefix(desired_emotion.name, 0) + "ge").to(device)

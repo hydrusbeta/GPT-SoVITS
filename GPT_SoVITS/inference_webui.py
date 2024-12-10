@@ -416,8 +416,8 @@ def validate_inputs(ref_wav_path, ref_text, ref_language, text, text_language, r
         is_valid = False
 
     # Inputs validation 2: User must either:
-    #   1. supply precomputed phoneme token indices and the prompt language
-    #   2. supply a reference text and the prompt language
+    #   1. supply precomputed phoneme token indices and the reference language
+    #   2. supply a reference text and the reference language
     #   3. set ref_free to True
     if not (precomputed_phones1 is not None and ref_language) and not (ref_text and ref_language) and not ref_free:
         msg = i18n("您必须执行以下操作之一：1. 提供预先计算的音素和参考语言，2. 提供参考文本和参考语言，或者 3. 将引用自由设置为 True")
@@ -857,6 +857,11 @@ with gr.Blocks(title="GPT-SoVITS WebUI") as app:
         #     button4.click(cut4, [text_inp], [text_opt])
         #     button5.click(cut5, [text_inp], [text_opt])
         # gr.Markdown(html_center(i18n("后续将支持转音素、手工修改音素、语音合成分步执行。")))
+
+
+def get_prefix(emotion_name, index):
+    return emotion_name + "." + str(index) + "."
+
 
 if __name__ == '__main__':
     app.queue().launch(#concurrency_count=511, max_size=1022
