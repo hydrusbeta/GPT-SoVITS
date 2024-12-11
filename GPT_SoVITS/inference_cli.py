@@ -2,11 +2,12 @@ import argparse
 import os
 import random
 from tempfile import NamedTemporaryFile
+import torch
 
 import soundfile as sf
 from safetensors import safe_open
 
-from .inference_webui import change_gpt_weights, change_sovits_weights, get_tts_wav, device, get_prefix
+from .inference_webui import change_gpt_weights, change_sovits_weights, get_tts_wav, device, get_prefix, is_half
 from .tools.i18n.i18n import I18nAuto
 
 # Invoke this script from the project root (GPT-SoVITS) using a terminal/command prompt as follows:
@@ -25,13 +26,15 @@ def synthesize(GPT_model_path, SoVITS_model_path, precomputed_traits_file, ref_a
             count = len([item for item in f.keys() if item.startswith(precomputed_trait) and item.endswith('phones1')])
             choice = random.randint(0, count-1)
             print(f"number of datapoints available for {precomputed_trait}: {count}. Choice: {choice}", flush=True)
-            phones1 = f.get_tensor(get_prefix(precomputed_trait, choice) + "phones1")
-            prompt = f.get_tensor(get_prefix(precomputed_trait, choice) + "prompt").to(device)
-            ge = f.get_tensor(get_prefix(precomputed_trait, choice) + "ge").to(device)
-            bert1 = f.get_tensor(get_prefix(precomputed_trait, choice) + "bert1").to(device) if "bert1" in f.keys() else None
+            precomputed_phones1 = f.get_tensor(get_prefix(precomputed_trait, choice) + "phones1")
+            precomputed_prompt = f.get_tensor(get_prefix(precomputed_trait, choice) + "prompt").to(device)
+            precomputed_ge = f.get_tensor(get_prefix(precomputed_trait, choice) + "ge").to(device)
+            precomputed_bert1 = f.get_tensor(get_prefix(precomputed_trait, choice) + "bert1").to(device) if "bert1" in f.keys() else None
+            if is_half:
+                precomputed_ge = precomputed_prompt.to(dtype=torch.float16)
     else:
         print(f"No precomputed trait was supplied. Using reference audio.", flush=True)
-        phones1, prompt, ge, bert1 = None, None, None, None
+        precomputed_phones1, precomputed_prompt, precomputed_ge, precomputed_bert1 = None, None, None, None
         # Read reference text
         with open(ref_text_path, 'r', encoding='utf-8') as file:
             ref_text = file.read()
@@ -66,10 +69,10 @@ def synthesize(GPT_model_path, SoVITS_model_path, precomputed_traits_file, ref_a
                                    ref_free=ref_free,
                                    speed=speed,
                                    inp_refs=additional_inputs,
-                                   precomputed_prompt=prompt,
-                                   precomputed_phones1=phones1,
-                                   precomputed_bert1=bert1,
-                                   precomputed_ge=ge)
+                                   precomputed_prompt=precomputed_prompt,
+                                   precomputed_phones1=precomputed_phones1,
+                                   precomputed_bert1=precomputed_bert1,
+                                   precomputed_ge=precomputed_ge)
 
     result_list = list(synthesis_result)
 
@@ -84,7 +87,7 @@ def main():
     parser = argparse.ArgumentParser(description="GPT-SoVITS Command Line Tool")
     parser.add_argument('--gpt_model', required=True, help="Path to the GPT model file")
     parser.add_argument('--sovits_model', required=True, help="Path to the SoVITS model file")
-    parser.add_argument('--precomputed_traits_file', required=True, help="Path to the SoVITS model file")
+    parser.add_argument('--precomputed_traits_file', help="Path to the SoVITS model file")
     parser.add_argument('--ref_audio', help="Path to the reference audio file")
     parser.add_argument('--ref_text', help="Path to the reference text file")
     parser.add_argument('--ref_language', required=True, choices=["中文", "英文", "日文", "粤语", "韩文", "中英混合", "日英混合", "粤英混合", "韩英混合", "多语种混合", "多语种混合(粤语)"], help="Language of the reference audio")

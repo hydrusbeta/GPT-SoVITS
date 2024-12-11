@@ -1,6 +1,9 @@
 import os
 from typing import List
 
+# Force the use of float32 tensors for higher precision
+os.environ['is_half'] = "False"
+
 import librosa
 import soundfile
 from safetensors import safe_open
