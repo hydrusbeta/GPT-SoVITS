@@ -31,7 +31,8 @@ def synthesize(GPT_model_path, SoVITS_model_path, precomputed_traits_file, ref_a
             precomputed_ge = f.get_tensor(get_prefix(precomputed_trait, choice) + "ge").to(device)
             precomputed_bert1 = f.get_tensor(get_prefix(precomputed_trait, choice) + "bert1").to(device) if "bert1" in f.keys() else None
             if is_half:
-                precomputed_ge = precomputed_prompt.to(dtype=torch.float16)
+                precomputed_ge = precomputed_ge.to(dtype=torch.float16)
+                precomputed_bert1 = precomputed_bert1.to(dtype=torch.float16) if precomputed_bert1 is not None else None
     else:
         print(f"No precomputed trait was supplied. Using reference audio.", flush=True)
         precomputed_phones1, precomputed_prompt, precomputed_ge, precomputed_bert1 = None, None, None, None

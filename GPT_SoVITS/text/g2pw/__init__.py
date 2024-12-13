@@ -1,1 +1,1 @@
-from g2pw import *
+from .g2pw import *
